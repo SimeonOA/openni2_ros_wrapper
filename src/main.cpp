@@ -19,20 +19,35 @@
 *                                                                            *
 *****************************************************************************/
 #include <stdio.h>
-#include <OpenNI.h>
+#include <sstream>
 
+// ROS headers
+#include "ros/ros.h"
+#include "std_msgs/String.h"
+#include <sensor_msgs/image_encodings.h>
+#include <sensor_msgs/Image.h>
+/*
+// TODO
+#include <sensor_msgs/CameraInfo.h>
+#include <sensor_msgs/distortion_models.h>
+#include <sensor_msgs/PointCloud2.h>
+*/
+
+// OpenNI2 headers
+#include <OpenNI.h>
 #include "OniSampleUtilities.h"
 
 #define SAMPLE_READ_WAIT_TIMEOUT 2000 //2000ms
 
 using namespace openni;
 
-int main()
+int main(int argc, char **argv)
 {
+	// Initialize the Structure Sensor device
 	Status rc = OpenNI::initialize();
 	if (rc != STATUS_OK)
 	{
-		printf("Initialize failed\n%s\n", OpenNI::getExtendedError());
+		ROS_ERROR("Initialize failed\n%s\n", OpenNI::getExtendedError());
 		return 1;
 	}
 
@@ -40,7 +55,7 @@ int main()
 	rc = device.open(ANY_DEVICE);
 	if (rc != STATUS_OK)
 	{
-		printf("Couldn't open device\n%s\n", OpenNI::getExtendedError());
+		ROS_ERROR("Couldn't open device\n%s\n", OpenNI::getExtendedError());
 		return 2;
 	}
 
@@ -51,49 +66,88 @@ int main()
 		rc = depth.create(device, SENSOR_DEPTH);
 		if (rc != STATUS_OK)
 		{
-			printf("Couldn't create depth stream\n%s\n", OpenNI::getExtendedError());
+			ROS_ERROR("Couldn't create depth stream\n%s\n", OpenNI::getExtendedError());
 			return 3;
 		}
 	}
-
+	
 	rc = depth.start();
 	if (rc != STATUS_OK)
 	{
-		printf("Couldn't start the depth stream\n%s\n", OpenNI::getExtendedError());
+		ROS_ERROR("Couldn't start the depth stream\n%s\n", OpenNI::getExtendedError());
 		return 4;
 	}
 
-	VideoFrameRef frame;
+	// Initialize ROS
+	ros::init(argc, argv, "openni2");
+	ros::NodeHandle nh;
+	ros::Publisher pub = nh.advertise<sensor_msgs::Image>("/openni2/depth_raw", 10);	
+	ros::Rate loop_rate(10);
 
-	while (!wasKeyboardHit())
+	VideoFrameRef frame;
+	sensor_msgs::Image ros_depth;
+	ros_depth.encoding = "32FC1"; // "mono16";
+	ros_depth.is_bigendian = 0;
+	unsigned char bytes[4];
+	
+	ROS_INFO("OpenNI2 is up and running.");
+	// while (!wasKeyboardHit())
+	while (ros::ok())
 	{
 		int changedStreamDummy;
 		VideoStream* pStream = &depth;
 		rc = OpenNI::waitForAnyStream(&pStream, 1, &changedStreamDummy, SAMPLE_READ_WAIT_TIMEOUT);
 		if (rc != STATUS_OK)
 		{
-			printf("Wait failed! (timeout is %d ms)\n%s\n", SAMPLE_READ_WAIT_TIMEOUT, OpenNI::getExtendedError());
+			ROS_ERROR("Wait failed! (timeout is %d ms)\n%s\n", SAMPLE_READ_WAIT_TIMEOUT, OpenNI::getExtendedError());
 			continue;
 		}
 
 		rc = depth.readFrame(&frame);
 		if (rc != STATUS_OK)
 		{
-			printf("Read failed!\n%s\n", OpenNI::getExtendedError());
+			ROS_ERROR("Read failed!\n%s\n", OpenNI::getExtendedError());
 			continue;
 		}
 
 		if (frame.getVideoMode().getPixelFormat() != PIXEL_FORMAT_DEPTH_1_MM && frame.getVideoMode().getPixelFormat() != PIXEL_FORMAT_DEPTH_100_UM)
 		{
-			printf("Unexpected frame format\n");
+			ROS_ERROR("Unexpected frame format\n");
 			continue;
 		}
 
-		DepthPixel* pDepth = (DepthPixel*)frame.getData();
+	    DepthPixel* pDepth = (DepthPixel*)frame.getData();
+	    int numPixels = frame.getHeight() * frame.getWidth();
+		// int middleIndex = (frame.getHeight()+1)*frame.getWidth()/2;
+		// ROS_INFO("[%08llu] %8d", (long long)frame.getTimestamp(), pDepth[middleIndex]);
 
-		int middleIndex = (frame.getHeight()+1)*frame.getWidth()/2;
-
-		printf("[%08llu] %8d\n", (long long)frame.getTimestamp(), pDepth[middleIndex]);
+		
+		ros_depth.height = frame.getHeight();
+		ros_depth.width = frame.getWidth();
+		ros_depth.step = frame.getWidth() * 4;
+		ros_depth.data.clear();
+		for (int i=0; i<numPixels; i++)
+		{
+			/*
+		    char hiByte = pDepth[i] >> 8;
+		    char lowByte = pDepth[i] % 256;
+		    ros_depth.data.push_back(hiByte);
+		    ros_depth.data.push_back(lowByte);
+		    */
+		    float depthValueInMeters = (float)pDepth[i] / 1000;
+		    memcpy(bytes, &depthValueInMeters, 4);
+		    ros_depth.data.push_back(bytes[0]);
+		    ros_depth.data.push_back(bytes[1]);
+		    ros_depth.data.push_back(bytes[2]);
+		    ros_depth.data.push_back(bytes[3]);
+		    
+		}
+		// std::copy(pDepth, pDepth+numPixels, numPixels);
+		pub.publish(ros_depth);
+		// ROS_INFO("size: %8d", ros_depth.data.size() );
+		
+		ros::spinOnce();
+		loop_rate.sleep();
 	}
 
 	depth.stop();
