@@ -1,6 +1,9 @@
 cmake_minimum_required (VERSION 2.8.3)
 project (openni2_ros_wrapper)
 
+# Please set the OPENNI2_PATH variable to the root directory of your local, compiled OpenNI2 driver  
+set(OPENNI2_PATH "~/OpenNI2")
+
 # Get the information about this package's buildtime dependencies
 find_package(catkin REQUIRED COMPONENTS 
 	roscpp
@@ -24,12 +27,12 @@ catkin_package(CATKIN_DEPENDS
 include_directories(include 
 	${catkin_INCLUDE_DIRS}
 	# ${OpenCV_INCLUDE_DIRS}
-	"~/OpenNI2/Include" 	# find include files for OpenNI2
+	"${OPENNI2_PATH}/Include" 	# find include files for OpenNI2
 )
 
 # find libraries for OpenNI2
-link_directories ("~/OpenNI2/Bin/Arm-Release")
-link_directories ("~/OpenNI2/Bin/Arm-Release/OpenNI2/Drivers")
+link_directories ("${OPENNI2_PATH}/Bin/Arm-Release")
+link_directories ("${OPENNI2_PATH}/Bin/Arm-Release/OpenNI2/Drivers")
 # add_library (OpenNI2 SHARED IMPORTED)
 # set_target_properties (OpenNI2 PROPERTIES IMPORTED_LOCATION 
 # 	~/OpenNI2/Bin/Arm-Release/OpenNI2/Drivers/libDummyDevice.so
@@ -38,8 +41,8 @@ link_directories ("~/OpenNI2/Bin/Arm-Release/OpenNI2/Drivers")
 # 	~/OpenNI2/Bin/Arm-Release/OpenNI2/Drivers/libPSLink.so
 # )
 
-add_executable (testDemo src/main.cpp include/OniSampleUtilities.h)
-target_link_libraries (testDemo 
+add_executable (structure_sensor src/main.cpp include/OniSampleUtilities.h)
+target_link_libraries (structure_sensor 
 	${catkin_LIBRARIES} 
 	# ${OpenCV_LIBRARIES}
 	libDepthUtils.a libOpenNI2.so

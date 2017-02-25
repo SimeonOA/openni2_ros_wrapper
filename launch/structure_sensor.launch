@@ -1,0 +1,18 @@
+<launch>
+	<!-- 
+	mode, resolution, fps, pixel format (100: depth is 1mm, 101: depth is 100um. please stick to even numbers )
+	0: 320*240, 30 fps, 100 format
+	1: 320*240, 30 fps, 101 format
+	2: 320*240, 60 fps, 100 format
+	3: 320*240, 60 fps, 101 format
+	4: 640*480, 30 fps, 100 format
+	5: 640*480, 30 fps, 101 format
+	6: 160*120, 30 fps, 100 format
+	7: 160*120, 30 fps, 101 format
+	-->
+	<arg name="mode" default="4"/> 
+
+    <node pkg="openni2_ros_wrapper" name="openni2_ros_wrapper" type="structure_sensor" output="screen">
+		<param name="mode" value="$(arg mode)" />		
+	</node>
+</launch>

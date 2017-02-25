@@ -39,11 +39,22 @@
 
 #define SAMPLE_READ_WAIT_TIMEOUT 2000 //2000ms
 
+using namespace std;
 using namespace openni;
+
+string node_name = "openni2_ros_wrapper";
+string pub_topic_name = "/" + node_name + "/depth_raw";
+int mode = 6;
 
 int main(int argc, char **argv)
 {
-	// Initialize the Structure Sensor device
+	/* Initialize ROS */
+	ros::init(argc, argv, node_name);
+	ros::NodeHandle nh("~");
+	ros::Publisher pub = nh.advertise<sensor_msgs::Image>(pub_topic_name, 10);	
+	ros::Rate loop_rate(10);
+
+	/* Initialize the Structure Sensor device */
 	Status rc = OpenNI::initialize();
 	if (rc != STATUS_OK)
 	{
@@ -61,7 +72,8 @@ int main(int argc, char **argv)
 
 	VideoStream depth;
 
-	if (device.getSensorInfo(SENSOR_DEPTH) != NULL)
+	const SensorInfo *sinfo = device.getSensorInfo(SENSOR_DEPTH);
+	if (sinfo != NULL)
 	{
 		rc = depth.create(device, SENSOR_DEPTH);
 		if (rc != STATUS_OK)
@@ -69,21 +81,43 @@ int main(int argc, char **argv)
 			ROS_ERROR("Couldn't create depth stream\n%s\n", OpenNI::getExtendedError());
 			return 3;
 		}
+
+		
+	}
+
+	/* Set resolution and frame rate */
+	const Array<VideoMode>& modesDepth = sinfo->getSupportedVideoModes();
+	ROS_INFO("All supported video modes:");
+	for (int i=0; i<modesDepth.getSize(); i++)
+	{
+		ROS_INFO("  %i: %i*%i, %i fps, %i format", i, modesDepth[i].getResolutionX(), 
+			modesDepth[i].getResolutionY(), modesDepth[i].getFps(), modesDepth[i].getPixelFormat());
+	}
+	if (nh.hasParam("mode"))
+		nh.getParam("mode", mode);
+	rc = depth.setVideoMode(modesDepth[mode]);
+
+	if (rc != STATUS_OK)
+	{
+		ROS_ERROR("Couldn't set resolution and fps\n%s\n", OpenNI::getExtendedError());
+		return 4;
+	}
+	else
+	{
+		ROS_INFO("Set resolution and fps successful.");
+		ROS_INFO("Resolution: %d-by-%d, fps: %d, format: %d", depth.getVideoMode().getResolutionY(), 
+			depth.getVideoMode().getResolutionX(), depth.getVideoMode().getFps(), depth.getVideoMode().getPixelFormat());
 	}
 	
+	/* Start the device */
 	rc = depth.start();
 	if (rc != STATUS_OK)
 	{
 		ROS_ERROR("Couldn't start the depth stream\n%s\n", OpenNI::getExtendedError());
-		return 4;
+		return 5;
 	}
 
-	// Initialize ROS
-	ros::init(argc, argv, "openni2");
-	ros::NodeHandle nh;
-	ros::Publisher pub = nh.advertise<sensor_msgs::Image>("/openni2/depth_raw", 10);	
-	ros::Rate loop_rate(10);
-
+	
 	VideoFrameRef frame;
 	sensor_msgs::Image ros_depth;
 	ros_depth.encoding = "32FC1"; // "mono16";
