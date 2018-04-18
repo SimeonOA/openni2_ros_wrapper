@@ -30,9 +30,12 @@ include_directories(include
 	"${OPENNI2_PATH}/Include" 	# find include files for OpenNI2
 )
 
-# find libraries for OpenNI2
-link_directories ("${OPENNI2_PATH}/Bin/Arm-Release")
-link_directories ("${OPENNI2_PATH}/Bin/Arm-Release/OpenNI2/Drivers")
+# find libraries for OpenNI2 on Arm
+# link_directories ("${OPENNI2_PATH}/Bin/Arm-Release")
+# link_directories ("${OPENNI2_PATH}/Bin/Arm-Release/OpenNI2/Drivers")
+# find libraries for OpenNI2 on x64
+link_directories ("${OPENNI2_PATH}/Bin/x64-Release")
+link_directories ("${OPENNI2_PATH}/Bin/x64-Release/OpenNI2/Drivers")
 # add_library (OpenNI2 SHARED IMPORTED)
 # set_target_properties (OpenNI2 PROPERTIES IMPORTED_LOCATION 
 # 	~/OpenNI2/Bin/Arm-Release/OpenNI2/Drivers/libDummyDevice.so
