@@ -4,7 +4,9 @@ ROS wrapper for [OpenNI2](https://github.com/occipital/openni2), specifically fo
 ## Installation
  - Install [OpenNI2](https://github.com/occipital/openni2): clone the OpenNI2 repo to `~/OpenNI2` and compile
  - Clone this repo under the source directory of your ROS workspace (e.g., under `~/catkin_ws/src/`)
- - (Optional) Modify Line 5 in CMakeLists.txt and set the `OPENNI2_PATH` variable, if the OpenNI2 is not located at `~/OpenNI2`
+ - Modify CMakeLists.txt. Specifically:
+     - Line 5: if the OpenNI2 is not located at `~/OpenNI2`, modify the `OPENNI2_PATH` variable to your OpenNI2 directory
+     - Line 34-35: modify the path, depending on the platform (`Arm-Release` or `x64-Release`)
  - Compile (e.g., run `catkin_make` under the directory `~/catkin_ws`)
  
 ## Usage
